@@ -927,10 +927,8 @@ PREVENTION
 # ─────────────────────────────────────────────────────────────────────────────
 with tab_dashboard:
     import os
-    import json
     import pandas as pd
     import plotly.graph_objects as go
-    from plotly.subplots import make_subplots
     from sklearn.metrics import precision_score, recall_score, f1_score, confusion_matrix
 
     st.markdown(
@@ -939,20 +937,17 @@ with tab_dashboard:
     )
 
     model_comparison_csv = "model_comparison.csv"
-    history_json = "training_history.json"
     hybrid_cm_path = "cnn_svm_confusion_matrix.png"
     hybrid_roc_path = "cnn_svm_roc_curves.png"
     svm_pred_csv = "svm_test_predictions.csv"
 
-    compare_title = "Hybrid vs CNN Comparison" if LANG == "en" else "Hybrid बनाम CNN तुलना"
     pred_dist_title = "Prediction Distribution" if LANG == "en" else "प्रेडिक्शन वितरण"
     correctness_title = "Correct vs Wrong Predictions" if LANG == "en" else "सही बनाम गलत प्रेडिक्शन"
     per_class_title = "Per-Class Performance" if LANG == "en" else "प्रति-क्लास प्रदर्शन"
-    acc_curve_title = "Training Accuracy Curve" if LANG == "en" else "ट्रेनिंग एक्यूरेसी कर्व"
     no_file_msg = "Required file not found." if LANG == "en" else "आवश्यक फ़ाइल नहीं मिली।"
 
     # ─────────────────────────────────────────────────────────
-    # 1. Top metrics
+    # 1. Top metrics: ONLY HYBRID
     # ─────────────────────────────────────────────────────────
     m1, m2, m3, m4 = st.columns(4)
 
@@ -978,6 +973,145 @@ with tab_dashboard:
         m4.metric(tr("f1", LANG), "—")
 
     st.markdown("---")
+
+    # ─────────────────────────────────────────────────────────
+    # 2. Confusion Matrix + ROC (ONLY HYBRID)
+    # ─────────────────────────────────────────────────────────
+    c1, c2 = st.columns(2)
+
+    with c1:
+        st.markdown(
+            f'<div class="section-header">{tr("confusion_matrix", LANG)}</div>',
+            unsafe_allow_html=True
+        )
+        if os.path.exists(hybrid_cm_path):
+            st.image(hybrid_cm_path, use_container_width=True)
+        else:
+            st.info(no_file_msg)
+
+    with c2:
+        st.markdown(
+            f'<div class="section-header">{tr("roc_curves", LANG)}</div>',
+            unsafe_allow_html=True
+        )
+        if os.path.exists(hybrid_roc_path):
+            st.image(hybrid_roc_path, use_container_width=True)
+        else:
+            st.info(no_file_msg)
+
+    st.markdown("---")
+
+    # ─────────────────────────────────────────────────────────
+    # 3. Prediction Distribution + Correct/Wrong
+    # ─────────────────────────────────────────────────────────
+    d1, d2 = st.columns(2)
+
+    if os.path.exists(svm_pred_csv):
+        df_pred = pd.read_csv(svm_pred_csv)
+
+        with d1:
+            st.markdown(
+                f'<div class="section-header">{pred_dist_title}</div>',
+                unsafe_allow_html=True
+            )
+
+            pred_counts = df_pred["pred_label"].value_counts()
+
+            fig_pred = go.Figure(go.Pie(
+                labels=pred_counts.index.tolist(),
+                values=pred_counts.values.tolist(),
+                hole=0.55,
+                textinfo="label+percent",
+                marker=dict(colors=["#f39c12", "#e74c3c", "#27ae60"])
+            ))
+            fig_pred.update_layout(
+                paper_bgcolor="rgba(0,0,0,0)",
+                font=dict(color="white", family="DM Sans"),
+                height=380,
+                margin=dict(t=20, b=20),
+                legend=dict(bgcolor="rgba(0,0,0,0)")
+            )
+            st.plotly_chart(fig_pred, use_container_width=True)
+
+        with d2:
+            st.markdown(
+                f'<div class="section-header">{correctness_title}</div>',
+                unsafe_allow_html=True
+            )
+
+            correct_counts = df_pred["correct"].map({
+                True: "Correct",
+                False: "Wrong",
+                "True": "Correct",
+                "False": "Wrong"
+            }).value_counts()
+
+            fig_correct = go.Figure(go.Pie(
+                labels=correct_counts.index.tolist(),
+                values=correct_counts.values.tolist(),
+                hole=0.55,
+                textinfo="label+percent",
+                marker=dict(colors=["#27ae60", "#e74c3c"])
+            ))
+            fig_correct.update_layout(
+                paper_bgcolor="rgba(0,0,0,0)",
+                font=dict(color="white", family="DM Sans"),
+                height=380,
+                margin=dict(t=20, b=20),
+                legend=dict(bgcolor="rgba(0,0,0,0)")
+            )
+            st.plotly_chart(fig_correct, use_container_width=True)
+    else:
+        d1.info(no_file_msg)
+        d2.info(no_file_msg)
+
+    st.markdown("---")
+
+    # ─────────────────────────────────────────────────────────
+    # 4. Per-class metrics (ONLY HYBRID)
+    # ─────────────────────────────────────────────────────────
+    st.markdown(
+        f'<div class="section-header">{per_class_title}</div>',
+        unsafe_allow_html=True
+    )
+
+    if os.path.exists(svm_pred_csv):
+        df_pred = pd.read_csv(svm_pred_csv)
+
+        y_true = df_pred["true_label_index"].values
+        y_pred = df_pred["pred_label_index"].values
+        class_names = list(dict.fromkeys(df_pred["true_label"].tolist()))
+
+        cm = confusion_matrix(y_true, y_pred)
+        per_acc = []
+        for i in range(len(class_names)):
+            denom = cm[i].sum()
+            per_acc.append((cm[i, i] / denom) if denom > 0 else 0.0)
+
+        prec_arr = precision_score(y_true, y_pred, average=None, zero_division=0)
+        rec_arr = recall_score(y_true, y_pred, average=None, zero_division=0)
+        f1_arr = f1_score(y_true, y_pred, average=None, zero_division=0)
+
+        fig_pc = go.Figure()
+        fig_pc.add_trace(go.Bar(name=tr("precision", LANG), x=class_names, y=prec_arr, marker_color="#f39c12"))
+        fig_pc.add_trace(go.Bar(name=tr("recall", LANG), x=class_names, y=rec_arr, marker_color="#e74c3c"))
+        fig_pc.add_trace(go.Bar(name=tr("f1", LANG), x=class_names, y=f1_arr, marker_color="#27ae60"))
+        fig_pc.add_trace(go.Bar(name="Accuracy", x=class_names, y=per_acc, marker_color="#81d4fa"))
+
+        fig_pc.update_layout(
+            barmode="group",
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            font=dict(color="white", family="DM Sans"),
+            yaxis=dict(range=[0, 1.1], gridcolor="rgba(255,255,255,0.10)"),
+            xaxis=dict(tickfont=dict(size=13)),
+            height=430,
+            margin=dict(t=30, b=20),
+            legend=dict(bgcolor="rgba(0,0,0,0)")
+        )
+        st.plotly_chart(fig_pc, use_container_width=True)
+    else:
+        st.info(no_file_msg)
 
     # ─────────────────────────────────────────────────────────
     # 2. Model comparison bar chart
