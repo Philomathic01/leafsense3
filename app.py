@@ -519,11 +519,10 @@ def resolve_class_names(metadata):
 
 def analyze_leaf_likelihood(img: Image.Image):
     """
-    App-level non-leaf rejection.
-    This is not a trained 4th class.
-    It is a practical image gate before CNN+SVM prediction.
+    Stronger app-level non-leaf rejection.
+    Works better for people / objects / outdoor scenes.
     """
-    img_small = img.convert("RGB").resize((224, 224))
+    img_small = img.convert("RGB").resize((256, 256))
     arr = np.array(img_small, dtype=np.uint8)
 
     hsv = np.array(img_small.convert("HSV"), dtype=np.uint8)
@@ -531,30 +530,74 @@ def analyze_leaf_likelihood(img: Image.Image):
     s = hsv[:, :, 1].astype(np.float32) / 255.0
     v = hsv[:, :, 2].astype(np.float32) / 255.0
 
-    # Green vegetation
-    green_mask = (h >= 35) & (h <= 110) & (s >= 0.18) & (v >= 0.15)
+    # green leaf-like
+    green_mask = (h >= 35) & (h <= 110) & (s >= 0.20) & (v >= 0.15)
 
-    # Wider plant-like mask to also capture yellow/brown diseased leaves
-    plant_mask = (h >= 15) & (h <= 120) & (s >= 0.12) & (v >= 0.12)
+    # yellow/brown diseased leaf-like
+    brown_mask = (h >= 10) & (h <= 35) & (s >= 0.18) & (v >= 0.10)
 
-    # Brown/dry leaf-like mask
-    brown_mask = (h >= 10) & (h <= 35) & (s >= 0.20) & (v >= 0.10)
+    leaf_mask = green_mask | brown_mask
 
+    # skin-like tones
+    skin_mask = (h >= 5) & (h <= 35) & (s >= 0.18) & (s <= 0.68) & (v >= 0.35)
+
+    # strong red cloth/background penalty
+    red_mask = (((h >= 0) & (h <= 12)) | ((h >= 340) & (h <= 360))) & (s >= 0.35) & (v >= 0.20)
+
+    # blue/cyan penalty
+    blue_mask = (h >= 180) & (h <= 260) & (s >= 0.20) & (v >= 0.15)
+
+    # overall ratios
+    leaf_ratio = float(np.mean(leaf_mask))
     green_ratio = float(np.mean(green_mask))
-    plant_ratio = float(np.mean(plant_mask | brown_mask))
+    brown_ratio = float(np.mean(brown_mask))
+    skin_ratio = float(np.mean(skin_mask))
+    red_ratio = float(np.mean(red_mask))
+    blue_ratio = float(np.mean(blue_mask))
     sat_mean = float(np.mean(s))
-    std_rgb = float(np.std(arr / 255.0))
 
-    # heuristic combined score
-    leaf_score = 0.50 * plant_ratio + 0.25 * green_ratio + 0.15 * sat_mean + 0.10 * std_rgb
+    # center region check: leaf image usually has leaf in the center
+    c1, c2 = 64, 192
+    center_leaf_ratio = float(np.mean(leaf_mask[c1:c2, c1:c2]))
+    center_green_ratio = float(np.mean(green_mask[c1:c2, c1:c2]))
+
+    # score
+    leaf_score = (
+        0.30 * leaf_ratio +
+        0.30 * center_leaf_ratio +
+        0.15 * green_ratio +
+        0.10 * center_green_ratio +
+        0.10 * sat_mean -
+        0.15 * skin_ratio -
+        0.10 * red_ratio -
+        0.05 * blue_ratio
+    )
+
     leaf_score = max(0.0, min(1.0, leaf_score))
+
+    # hard rejection rules
+    hard_reject = (
+        center_leaf_ratio < 0.08 or
+        leaf_ratio < 0.10 or
+        (skin_ratio > 0.12 and center_leaf_ratio < 0.18) or
+        (red_ratio > 0.10 and center_leaf_ratio < 0.20)
+    )
+
+    if hard_reject:
+        leaf_score *= 0.35
 
     return {
         "leaf_score": leaf_score,
+        "leaf_ratio": leaf_ratio,
         "green_ratio": green_ratio,
-        "plant_ratio": plant_ratio,
+        "brown_ratio": brown_ratio,
+        "center_leaf_ratio": center_leaf_ratio,
+        "center_green_ratio": center_green_ratio,
+        "skin_ratio": skin_ratio,
+        "red_ratio": red_ratio,
+        "blue_ratio": blue_ratio,
         "sat_mean": sat_mean,
-        "std_rgb": std_rgb,
+        "hard_reject": hard_reject,
     }
 
 
