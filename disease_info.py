@@ -336,7 +336,26 @@ DEFAULT_INFO = {
 def _normalize_label(label: str) -> str:
     if not isinstance(label, str):
         return ""
-    return label.replace("Potato__", "Potato___").strip()
+
+    x = label.strip().lower()
+    x = x.replace("-", "_").replace(" ", "_")
+
+    # remove possible potato prefixes
+    x = x.replace("potato___", "")
+    x = x.replace("potato__", "")
+    x = x.replace("potato_", "")
+
+    mapping = {
+        "early_blight": "Potato___Early_blight",
+        "late_blight": "Potato___Late_blight",
+        "healthy": "Potato___healthy",
+        "not_leaf_detected": "Not_Leaf_Detected",
+        "not_a_leaf_detected": "Not_Leaf_Detected",
+        "not_leaf": "Not_Leaf_Detected",
+        "non_leaf": "Not_Leaf_Detected",
+    }
+
+    return mapping.get(x, label.strip())
 
 
 def get_disease_info(label: str, lang: str = "en"):
