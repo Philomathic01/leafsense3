@@ -1,0 +1,33 @@
+{
+  "base_dir": "/content/drive/MyDrive/dataset/Potato",
+  "train_dir": "/content/drive/MyDrive/dataset/Potato/Train",
+  "val_dir": "/content/drive/MyDrive/dataset/Potato/Valid",
+  "test_dir": "/content/drive/MyDrive/dataset/Potato/Test",
+  "output_dir": "/content/drive/MyDrive/Potato_CNN_SVM_Output",
+  "class_names": [
+    "Potato___Early_blight",
+    "Potato___Late_blight",
+    "Potato___healthy"
+  ],
+  "clean_class_names": [
+    " Early blight",
+    " Late blight",
+    " healthy"
+  ],
+  "num_classes": 3,
+  "img_size": [
+    224,
+    224
+  ],
+  "batch_size": 32,
+  "seed": 42,
+  "best_svm_params": {
+    "C": 50,
+    "gamma": "scale",
+    "kernel": "rbf"
+  },
+  "cnn_model_path": "/content/drive/MyDrive/Potato_CNN_SVM_Output/best_cnn_classifier.keras",
+  "feature_model_path": "/content/drive/MyDrive/Potato_CNN_SVM_Output/best_cnn_feature_extractor.keras",
+  "svm_model_path": "/content/drive/MyDrive/Potato_CNN_SVM_Output/svm_on_cnn_features.joblib",
+  "scaler_path": "/content/drive/MyDrive/Potato_CNN_SVM_Output/feature_scaler.joblib"
+}

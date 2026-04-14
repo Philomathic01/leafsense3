@@ -1,0 +1,4 @@
+Class,Train,Validation,Test
+Potato___Early_blight,300,100,100
+Potato___Late_blight,300,100,100
+Potato___healthy,300,100,100

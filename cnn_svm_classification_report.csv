@@ -1,0 +1,7 @@
+,precision,recall,f1-score,support
+ Early blight,0.9709,1.0,0.9852,100.0
+ Late blight,0.951,0.97,0.9604,100.0
+ healthy,1.0,0.95,0.9744,100.0
+accuracy,0.9733,0.9733,0.9733,0.9733
+macro avg,0.974,0.9733,0.9733,300.0
+weighted avg,0.974,0.9733,0.9733,300.0
