@@ -464,19 +464,57 @@ def get_model_summary_text(model_obj):
     return stream.getvalue()
 
 
+def canonicalize_class_name(label: str) -> str:
+    if not isinstance(label, str):
+        return ""
+
+    x = label.strip().lower()
+    x = x.replace("-", "_").replace(" ", "_")
+    x = x.replace("potato___", "")
+    x = x.replace("potato__", "")
+    x = x.replace("potato_", "")
+
+    mapping = {
+        "early_blight": "Potato___Early_blight",
+        "late_blight": "Potato___Late_blight",
+        "healthy": "Potato___healthy",
+        "not_leaf_detected": "Not_Leaf_Detected",
+        "not_a_leaf_detected": "Not_Leaf_Detected",
+        "not_leaf": "Not_Leaf_Detected",
+        "non_leaf": "Not_Leaf_Detected",
+    }
+
+    return mapping.get(x, label.strip())
+
+
 def resolve_class_names(metadata):
-    class_names = metadata.get("class_names", [])
-    if class_names:
-        return class_names
+    raw = metadata.get("class_names", [])
 
-    idx_to_class = metadata.get("idx_to_class", {})
-    if idx_to_class:
-        ordered = []
-        for i in range(len(idx_to_class)):
-            ordered.append(idx_to_class[str(i)])
-        return ordered
+    if isinstance(raw, str):
+        raw = [raw]
+    elif isinstance(raw, dict):
+        raw = list(raw.values())
+    elif not isinstance(raw, list):
+        raw = []
 
-    return ["Potato___Early_blight", "Potato___Late_blight", "Potato___healthy"]
+    if not raw:
+        idx_to_class = metadata.get("idx_to_class", {})
+        if isinstance(idx_to_class, dict) and idx_to_class:
+            try:
+                raw = [idx_to_class[str(i)] for i in sorted(int(k) for k in idx_to_class.keys())]
+            except Exception:
+                raw = list(idx_to_class.values())
+
+    raw = [canonicalize_class_name(x) for x in raw]
+    raw = list(dict.fromkeys(raw))  # remove duplicates, keep order
+
+    valid = {"Potato___Early_blight", "Potato___Late_blight", "Potato___healthy"}
+    raw = [x for x in raw if x in valid]
+
+    if len(raw) != 3:
+        raw = ["Potato___Early_blight", "Potato___Late_blight", "Potato___healthy"]
+
+    return raw
 
 
 def analyze_leaf_likelihood(img: Image.Image):
