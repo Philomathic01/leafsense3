@@ -598,6 +598,7 @@ def analyze_leaf_likelihood(img: Image.Image):
         "blue_ratio": blue_ratio,
         "sat_mean": sat_mean,
         "hard_reject": hard_reject,
+        "plant_ratio": leaf_ratio,
     }
 
 
