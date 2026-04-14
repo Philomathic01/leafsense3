@@ -1116,7 +1116,7 @@ with tab_dashboard:
     # ─────────────────────────────────────────────────────────
     # 2. Model comparison bar chart
     # ─────────────────────────────────────────────────────────
-    st.markdown(
+    '''st.markdown(
         f'<div class="section-header">{compare_title}</div>',
         unsafe_allow_html=True
     )
@@ -1161,7 +1161,7 @@ with tab_dashboard:
     else:
         st.info(no_file_msg)
 
-    st.markdown("---")
+    st.markdown("---")'''
 
     # ─────────────────────────────────────────────────────────
     # 3. Confusion matrix + ROC
