@@ -637,7 +637,7 @@ with st.sidebar:
 
     img_size_option = st.selectbox(tr("input_size", LANG), [224, 128, 256], index=0)
     confidence_threshold = st.slider(tr("confidence_threshold", LANG), 0.0, 1.0, 0.5, 0.05)
-    non_leaf_threshold = st.slider(tr("leaf_threshold", LANG), 0.0, 1.0, 0.16, 0.01)
+    non_leaf_threshold = st.slider(tr("leaf_threshold", LANG), 0.0, 1.0, 0.30, 0.01)
 
     st.markdown("---")
     st.markdown(f"### {tr('about', LANG)}")
@@ -742,7 +742,11 @@ with tab_predict:
 
                 leaf_stats = analyze_leaf_likelihood(img_pil)
                 leaf_score = leaf_stats["leaf_score"]
-                non_leaf_detected = leaf_score < non_leaf_threshold
+                non_leaf_detected = (
+                    leaf_score < non_leaf_threshold
+                    or leaf_stats["hard_reject"]
+                    or leaf_stats["center_leaf_ratio"] < 0.08
+                )
 
                 if model_loaded and not non_leaf_detected:
                     probs3, pred_idx, feature_vec = predict_hybrid(
@@ -789,7 +793,7 @@ with tab_predict:
 
             c_a, c_b = st.columns(2)
             c_a.metric(tr("non_leaf_score", LANG), f"{leaf_score:.2f}")
-            c_b.metric(tr("confidence_threshold", LANG), f"{confidence_threshold:.2f}")
+            c_b.metric(tr("leaf_threshold", LANG), f"{non_leaf_threshold:.2f}")
 
             if pred_class == "Not_Leaf_Detected":
                 st.info(tr("non_leaf_note", LANG))
@@ -908,8 +912,13 @@ PREVENTION
                 st.write("**Pipeline:** Image → Leaf Gate → CNN Feature Extractor → StandardScaler → SVM")
                 st.write(f"**{tr('feature_vector', LANG)}:** {len(feature_vec)}")
                 st.write(f"**{tr('top_class', LANG)}:** {disease['display_name']}")
-                st.write(f"**Plant ratio:** {leaf_stats['plant_ratio']:.3f}")
+                st.write(f"**Leaf ratio:** {leaf_stats['leaf_ratio']:.3f}")
+                st.write(f"**Center leaf ratio:** {leaf_stats['center_leaf_ratio']:.3f}")
                 st.write(f"**Green ratio:** {leaf_stats['green_ratio']:.3f}")
+                st.write(f"**Brown ratio:** {leaf_stats['brown_ratio']:.3f}")
+                st.write(f"**Skin ratio:** {leaf_stats['skin_ratio']:.3f}")
+                st.write(f"**Red ratio:** {leaf_stats['red_ratio']:.3f}")
+                st.write(f"**Hard reject:** {leaf_stats['hard_reject']}")
         else:
             st.markdown(f"""
             <div style="text-align:center; padding: 4rem 2rem; color: #81c784; 
